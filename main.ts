@@ -32,33 +32,49 @@ const LINES = [
   "Six silent months turned a fixable argument into a resignation, and the company you built together died the day neither of you spoke first.",
 ];
 
-const ENTRY = LINES.join("\n");
+// The entry text is fixed: 261 characters total (line 1 + "\n" + line 2),
+// as documented in README.md. Any edit that changes the wording must
+// fail here instead of silently submitting a different entry.
+const EXPECTED_ENTRY_CHARS = 261;
 
-// Gate guard: the entry must be exactly two lines, each exactly one
-// sentence (a single terminal period, nothing else). Fail loudly here
-// rather than writing an entry the judge cannot read as two lines.
-if (LINES.length !== 2) {
-  throw new Error(`entry must be exactly two lines, got ${LINES.length}`);
-}
-for (const [i, line] of LINES.entries()) {
-  const periods = (line.match(/\./g) ?? []).length;
-  if (periods !== 1 || !line.endsWith(".") || line.trim().length === 0) {
+function validateLines(lines: string[]): string {
+  if (lines.length !== 2) {
+    throw new Error(`entry must be exactly two lines, got ${lines.length}`);
+  }
+  for (const [i, line] of lines.entries()) {
+    const periods = (line.match(/\./g) ?? []).length;
+    if (periods !== 1 || !line.endsWith(".") || line.trim().length === 0) {
+      throw new Error(
+        `line ${i + 1} must be exactly one sentence, got ${JSON.stringify(line)}`,
+      );
+    }
+  }
+  const entry = lines.join("\n");
+  if ([...entry].length !== EXPECTED_ENTRY_CHARS) {
     throw new Error(
-      `line ${i + 1} must be exactly one sentence, got ${JSON.stringify(line)}`,
+      `entry must be exactly ${EXPECTED_ENTRY_CHARS} characters, got ${[...entry].length}`,
     );
   }
+  return entry;
 }
+
+// Write the validated entry to <outDir>/entry.txt and report it.
+function writeEntry(outDir: string, entry: string, lineCount: number): string {
+  const outFile = join(outDir, "entry.txt");
+  mkdirSync(outDir, { recursive: true });
+  writeFileSync(outFile, entry + "\n", "utf8");
+  console.log(
+    `Wrote ${[...entry].length} characters (${lineCount} lines) to ${outFile}`,
+  );
+  console.log(entry);
+  return outFile;
+}
+
+const ENTRY = validateLines(LINES);
 
 const outDir =
   process.env.MAKEFUN_OUTPUT_DIR?.trim() ||
   process.env.OUTPUT_DIR?.trim() ||
   "/output";
-const outFile = join(outDir, "entry.txt");
 
-mkdirSync(outDir, { recursive: true });
-writeFileSync(outFile, ENTRY + "\n", "utf8");
-
-console.log(
-  `Wrote ${[...ENTRY].length} characters (${LINES.length} lines) to ${outFile}`,
-);
-console.log(ENTRY);
+writeEntry(outDir, ENTRY, LINES.length);
